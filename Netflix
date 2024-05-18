@@ -1,0 +1,32 @@
+#This analysis used data that can be found in the Netflix database located at https://www.db-fiddle.com/f/pfsdrKi9cgCDp4Wwb77AF/0
+
+--1. How many movie titles are there in the database? (movies only, not tv shows)
+
+SELECT count(*)
+FROM "netflix_titles_info"
+WHERE type='Movie';
+
+--When was the most recent batch of tv shows and/or movies added to the database?
+SELECT MAX(date(date_added))
+FROM "netflix_titles_info";
+
+--List all the movies and tv shows in alphabetical order.
+SELECT title
+FROM "netflix_titles_info"
+ORDER BY title asc;
+
+--Who was the Director for the movie The Starling?
+SELECT people.director
+FROM "netflix_people" AS people
+LEFT JOIN "netflix_titles_info" AS titles
+ON people.show_id = titles.show_id
+WHERE titles.title = 'The Starling'
+;
+
+--What is the oldest movie in the database and what year was it made?
+SELECT title, release_year
+FROM "netflix_titles_info"
+WHERE type='Movie'
+ORDER BY release_year asc
+LIMIT 1;
+
