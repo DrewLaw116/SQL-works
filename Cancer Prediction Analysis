@@ -34,7 +34,7 @@ WHERE Diagnosis = "1"
 AND AlcoholIntake>= "0"
 AND AlcoholIntake< "1";
 
---No, no it does not
+--Conclusion, no it does not
 
 --What about if they have had cancer previously?
 SELECT AlcoholIntake, Diagnosis, CancerHistory
