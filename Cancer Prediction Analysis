@@ -1,3 +1,106 @@
 #The following analysis was done using the cancer prediction dataset that can be found on kaggle here 
 #https://www.kaggle.com/datasets/rabieelkharoua/cancer-prediction-dataset/code
 
+SELECT*
+FROM BIT_DB.Cancer;
+
+--Does the amount of Alcohol drunk affect diagnosis
+SELECT AlcoholIntake, Diagnosis
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+AND AlcoholIntake>= "4";
+
+SELECT AlcoholIntake, Diagnosis
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+AND AlcoholIntake>= "3"
+AND AlcoholIntake< "4";
+
+SELECT AlcoholIntake, Diagnosis
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+AND AlcoholIntake>= "2"
+AND AlcoholIntake< "3";
+
+SELECT AlcoholIntake, Diagnosis
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+AND AlcoholIntake>= "1"
+AND AlcoholIntake< "2";
+
+SELECT AlcoholIntake, Diagnosis
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+AND AlcoholIntake>= "0"
+AND AlcoholIntake< "1";
+
+--No, no it does not
+
+--What about if they have had cancer previously?
+SELECT AlcoholIntake, Diagnosis, CancerHistory
+FROM BIT_DB.Cancer
+WHERE Diagnosis = "1"
+OR CancerHistory = "1"
+ORDER BY AlcoholIntake desc
+;
+
+--Label the BMI as underweight, healthy, overweight and obese and order by oldest
+
+SELECT Age, BMI,
+CASE 
+WHEN CAST(BMI AS DECIMAL(5,2)) < 18.5 THEN 'Underweight'
+WHEN CAST(BMI AS DECIMAL(5,2)) >= 18.5 AND CAST(BMI AS DECIMAL(5,2)) < 25 THEN 'Healthy'
+WHEN CAST(BMI AS DECIMAL(5,2)) >= 25 AND CAST(BMI AS DECIMAL(5,2)) < 30 THEN 'Overweight'
+ELSE 'Obese' END AS "BMI Rating"
+FROM BIT_DB.Cancer
+ORDER BY Age DESC;
+
+--Label the BMI as underweight, healthy, overweight and obese and order by Physical activity
+SELECT PhysicalActivity, BMI,
+CASE 
+WHEN CAST(BMI AS DECIMAL(5,2)) < 18.5 THEN 'Underweight'
+WHEN CAST(BMI AS DECIMAL(5,2)) >= 18.5 AND CAST(BMI AS DECIMAL(5,2)) < 25 THEN 'Healthy'
+WHEN CAST(BMI AS DECIMAL(5,2)) >= 25 AND CAST(BMI AS DECIMAL(5,2)) < 30 THEN 'Overweight'
+ELSE 'Obese' END AS "BMI Rating"
+FROM BIT_DB.Cancer
+ORDER BY PhysicalActivity DESC;
+
+--How active are the elderly
+SELECT Age, PhysicalActivity
+FROM BIT_DB.Cancer
+WHERE AGE >= 55
+ORDER BY AGE DESC;
+
+--What is the average alcohol income per age
+SELECT Age, AVG(AlcoholIntake) AS AverageAlcoholIntake
+FROM BIT_DB.Cancer
+GROUP BY Age
+ORDER BY Age DESC;
+
+--What is the maximum physical activity per age
+SELECT Age, MAX(PhysicalActivity) AS MaxPhysicalActivity
+FROM BIT_DB.Cancer
+GROUP BY AGE
+ORDER BY AGE ASC;
+
+--Does smoking become more frequent as you age?
+SELECT Age, COUNT(*) AS "Smoking Count"
+FROM BIT_DB.Cancer
+WHERE CAST(Smoking AS UNSIGNED) = 1
+GROUP BY Age
+ORDER BY Age ASC;
+
+--How many smokers had/have cancer?
+SELECT COUNT(*)
+FROM BIT_DB.Cancer
+WHERE CAST(Smoking AS INT) = 1
+AND (CAST(CancerHistory AS INT) = 1 OR CAST(Diagnosis AS INT) = 1);
+
+--Which Age is the most physically active
+SELECT Age, CAST (PhysicalActivity AS INT) AS PhysicalActivity
+FROM BIT_DB.Cancer
+WHERE PhysicalActivity >=9
+GROUP BY Age
+ORDER BY PhysicalActivity DESC;
+
+
