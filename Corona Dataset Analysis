@@ -1,0 +1,165 @@
+
+
+--Q1. Write a code to check NULL Values
+SELECT COUNT(*) AS Total_Null_Values
+FROM BIT_DB.CoronaVirus
+WHERE Province IS NULL
+OR "Country/Region" IS NULL
+OR Latitude IS NULL
+OR Longitude IS NULL
+OR Date IS NULL
+OR Confirmed IS NULL
+OR Deaths IS NULL
+OR Recovered IS NULL;
+
+--Q2. If NULL values are present, update them with zeros for all columns.
+-- There are no NULL values in this dataset 
+
+-- Q3. check total number of rows
+SELECT COUNT(*) AS Total_Rows
+FROM BIT_DB.CoronaVirus;
+
+-- Q4. Check what is start_date and end_date
+SELECT MIN(substr(Date, 7, 4) || '-' || substr(Date, 1, 2) || '-' || substr(Date, 4, 2)) AS Start_Date,
+       MAX(substr(Date, 7, 4) || '-' || substr(Date, 1, 2) || '-' || substr(Date, 4, 2)) AS End_Date
+FROM BIT_DB.CoronaVirus;
+
+-- Q5. Number of month present in dataset
+SELECT Count(DISTINCT substr(Date, 4, 2)) AS Month
+FROM BIT_DB.CoronaVirus;
+
+-- Q6. Find monthly average for confirmed, deaths, recovered
+SELECT 
+    substr(Date, 7, 4) AS Year, 
+    substr(Date, 4, 2) AS Month, 
+    AVG(Confirmed) AS Avg_confirmed, 
+    AVG(Deaths) AS Avg_deaths, 
+    AVG(Recovered) AS Avg_recovered
+FROM BIT_DB.CoronaVirus
+GROUP BY 
+    substr(Date, 7, 4), 
+    substr(Date, 4, 2)
+ORDER BY 
+    substr(Date, 7, 4), 
+    substr(Date, 4, 2);
+
+-- Q7. Find most frequent value for confirmed, deaths, recovered each month 
+SELECT 
+    substr(Date, 7, 4) AS Year, 
+    substr(Date, 4, 2) AS Month, 
+    Recovered, 
+    COUNT(*) AS Frequency
+FROM BIT_DB.CoronaVirus
+GROUP BY 
+    substr(Date, 7, 4), 
+    substr(Date, 4, 2), 
+    Recovered
+ORDER BY Frequency DESC;
+
+-- Q8. Find minimum values for confirmed, deaths, recovered per year
+SELECT 
+    substr(Date, 7, 4) AS Year, 
+    MIN(Confirmed) AS Min_confirmed, 
+    MIN(Deaths) AS Min_deaths, 
+    MIN(Recovered) AS Min_recovered
+FROM BIT_DB.CoronaVirus
+GROUP BY substr(Date, 7, 4)
+ORDER BY Year;
+
+-- Q9. Find maximum values of confirmed, deaths, recovered per year
+SELECT 
+    substr(Date, 7, 4) AS Year, 
+    MAX(Confirmed) AS Max_confirmed, 
+    MAX(Deaths) AS Max_deaths, 
+    MAX(Recovered) AS Max_recovered
+FROM BIT_DB.CoronaVirus
+GROUP BY substr(Date, 7, 4)
+ORDER BY Year;
+
+-- Q10. The total number of case of confirmed, deaths, recovered each month
+SELECT 
+    substr(Date, 4, 2) AS Month, 
+    SUM(Confirmed) AS Total_confirmed, 
+    SUM(Deaths) AS Total_deaths, 
+    SUM(Recovered) AS Total_recovered
+FROM BIT_DB.CoronaVirus
+GROUP BY substr(Date, 4, 2)
+ORDER BY Month;
+
+-- Q11. Check how corona virus spread out with respect to confirmed case
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    CAST(substr(Date, 7, 4) AS INTEGER) AS Year,
+    CAST(substr(Date, 4, 2) AS INTEGER) AS Month,
+    SUM(Confirmed) AS Total_Cases,
+    AVG(Confirmed) AS Average,
+    (
+        SUM(Confirmed * Confirmed) / COUNT(*) 
+        - AVG(Confirmed) * AVG(Confirmed)
+    ) AS Variance,
+    CAST(SQRT(
+        SUM(Confirmed * Confirmed) / COUNT(*) 
+        - AVG(Confirmed) * AVG(Confirmed)
+    ) AS REAL) AS Standard_Deviation
+FROM BIT_DB.CoronaVirus
+GROUP BY Year, Month
+ORDER BY Year, Month;
+
+-- Q12. Check how corona virus spread out with respect to death case per month
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    CAST(substr(Date, 7, 4) AS INTEGER) AS Year,
+    CAST(substr(Date, 4, 2) AS INTEGER) AS Month,
+    SUM(Deaths) AS Total_Deaths,
+    AVG(Deaths) AS Average,
+    (
+        SUM(Deaths * Deaths) / COUNT(*) 
+        - AVG(Deaths) * AVG(Deaths)
+    ) AS Variance,
+    CAST(SQRT(
+        SUM(Deaths * Deaths) / COUNT(*) 
+        - AVG(Deaths) * AVG(Deaths)
+    ) AS REAL) AS Standard_Deviation
+FROM BIT_DB.CoronaVirus
+GROUP BY Year, Month
+ORDER BY Year, Month;
+
+-- Q13. Check how corona virus spread out with respect to recovered case
+--      (Eg.: total confirmed cases, their average, variance & STDEV )
+SELECT 
+    CAST(substr(Date, 7, 4) AS INTEGER) AS Year,
+    CAST(substr(Date, 4, 2) AS INTEGER) AS Month,
+    SUM(Recovered) AS Total_Recovered,
+    AVG(Recovered) AS Average,
+    (
+        SUM(Recovered * Recovered) / COUNT(*) 
+        - AVG(Recovered) * AVG(Recovered)
+    ) AS Variance,
+    CAST(SQRT(
+        SUM(Recovered * Recovered) / COUNT(*) 
+        - AVG(Recovered) * AVG(Recovered)
+    ) AS REAL) AS Standard_Deviation
+FROM BIT_DB.CoronaVirus
+GROUP BY Year, Month
+ORDER BY Year, Month;
+
+-- Q14. Find Country having highest number of the Confirmed case
+SELECT "Country/Region", MAX(Confirmed) AS Confirmed
+FROM BIT_DB.CoronaVirus
+GROUP BY "Country/Region"
+ORDER BY Confirmed DESC
+LIMIT 1;
+
+-- Q15. Find Country having lowest number of the death case
+SELECT "Country/Region", MIN(Deaths) AS Death_Cases
+FROM BIT_DB.CoronaVirus
+GROUP BY "Country/Region"
+ORDER BY Death_Cases 
+;
+
+-- 16. Find top 5 countries having highest recovered case
+SELECT "Country/Region", MAX(Recovered) AS Recovered
+FROM BIT_DB.CoronaVirus
+GROUP BY "Country/Region"
+ORDER BY Recovered DESC
+LIMIT 5;
