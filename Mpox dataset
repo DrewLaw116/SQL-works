@@ -1,0 +1,363 @@
+Download the dataset here()
+
+
+SELECT*
+FROM mpoxcases;
+
+SELECT*
+FROM mpoxdeaths;
+
+-- Find the total amount of deaths for each country
+SELECT location, date, total_deaths
+FROM mpoxdeaths
+Order by total_deaths desc;
+
+-- The previous question but revised to exclude the world and show the total deaths on the latest day in the dataset
+SELECT location, date, total_deaths
+FROM (
+    SELECT location, date, total_deaths,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_deaths DESC) as rn
+    FROM mpoxdeaths
+    WHERE location != 'World'
+) ranked
+WHERE rn = 1
+ORDER BY total_deaths DESC;
+
+-- Doing the same for cases
+SELECT location, date, total_cases
+FROM (
+    SELECT location, date, total_cases,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_cases DESC) as rn
+    FROM mpoxcases
+    WHERE location != 'World'
+) ranked
+WHERE rn = 1
+ORDER BY total_cases DESC;
+
+-- Total deaths and cases side by side
+SELECT cases.location, cases.date, cases.total_cases, deaths.total_deaths
+FROM (
+    SELECT location, date, total_cases,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_cases DESC) as rn
+    FROM mpoxcases
+    WHERE location != 'World'
+) cases
+JOIN (
+    SELECT location, date, total_deaths,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_deaths DESC) as rn
+    FROM mpoxdeaths
+    WHERE location != 'World'
+) deaths
+ON cases.location = deaths.location AND cases.rn = deaths.rn
+WHERE cases.rn = 1
+ORDER BY cases.total_cases DESC;
+
+-- What are the total cases and deaths worldwide?
+SELECT cases.location, cases.date, cases.total_cases, deaths.total_deaths
+FROM (
+    SELECT location, date, total_cases,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_cases DESC) as rn
+    FROM mpoxcases
+    WHERE location = 'World'
+) cases
+JOIN (
+    SELECT location, date, total_deaths,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY date DESC, total_deaths DESC) as rn
+    FROM mpoxdeaths
+    WHERE location = 'World'
+) deaths
+ON cases.location = deaths.location AND cases.rn = deaths.rn
+WHERE cases.rn = 1;
+
+-- Noticed the world latest date said 2023 trying to find latest date, fixing that
+SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) AS latest_date
+FROM mpoxcases;
+
+-- Fixing cases and deaths
+SELECT cases.location, cases.date, cases.total_cases, deaths.total_deaths
+FROM (
+    SELECT location, STR_TO_DATE(date, '%d/%m/%Y') AS date, total_cases,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC, total_cases DESC) as rn
+    FROM mpoxcases
+    WHERE location = 'World'
+) cases
+JOIN (
+    SELECT location, STR_TO_DATE(date, '%d/%m/%Y') AS date, total_deaths,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC, total_deaths DESC) as rn
+    FROM mpoxdeaths
+    WHERE location = 'World'
+) deaths
+ON cases.location = deaths.location AND cases.rn = deaths.rn
+WHERE cases.rn = 1;
+
+-- Total deaths and cases side by side with date string conversion
+SELECT cases.location, cases.date, cases.total_cases, deaths.total_deaths
+FROM (
+    SELECT location, STR_TO_DATE(date, '%d/%m/%Y') AS date, total_cases,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC, total_cases DESC) as rn
+    FROM mpoxcases
+    WHERE location != 'World'
+) cases
+JOIN (
+    SELECT location, STR_TO_DATE(date, '%d/%m/%Y') AS date, total_deaths,
+           ROW_NUMBER() OVER (PARTITION BY location ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC, total_deaths DESC) as rn
+    FROM mpoxdeaths
+    WHERE location != 'World'
+) deaths
+ON cases.location = deaths.location AND cases.rn = deaths.rn
+WHERE cases.rn = 1
+ORDER BY cases.total_cases DESC;
+
+-- How did the amount of cases and deaths increase over two years
+WITH recent_cases AS (
+    -- Get the most recent total cases for each location
+    SELECT location, total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxcases
+    )
+),
+previous_cases AS (
+    -- Get the total cases from exactly 2 years before the most recent date
+    SELECT location, total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT DATE_SUB(MAX(STR_TO_DATE(date, '%d/%m/%Y')), INTERVAL 2 YEAR) FROM mpoxcases
+    )
+),
+recent_deaths AS (
+    -- Get the most recent total deaths for each location
+    SELECT location, total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxdeaths
+    )
+),
+previous_deaths AS (
+    -- Get the total deaths from exactly 2 years before the most recent date
+    SELECT location, total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT DATE_SUB(MAX(STR_TO_DATE(date, '%d/%m/%Y')), INTERVAL 2 YEAR) FROM mpoxdeaths
+    )
+)
+-- Calculate the difference and display the increases in both cases and deaths
+SELECT recent_cases.location,
+       recent_cases.total_cases AS recent_cases,
+       previous_cases.total_cases AS cases_two_years_ago,
+       (recent_cases.total_cases - previous_cases.total_cases) AS case_increase,
+       recent_deaths.total_deaths AS recent_deaths,
+       previous_deaths.total_deaths AS deaths_two_years_ago,
+       (recent_deaths.total_deaths - previous_deaths.total_deaths) AS death_increase
+FROM recent_cases
+JOIN previous_cases ON recent_cases.location = previous_cases.location
+JOIN recent_deaths ON recent_cases.location = recent_deaths.location
+JOIN previous_deaths ON recent_cases.location = previous_deaths.location
+ORDER BY case_increase DESC, death_increase DESC;
+
+
+
+-- Calulating the percentage increase
+WITH recent_cases AS (
+    -- Get the most recent total cases for each location
+    SELECT location, total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxcases
+    )
+),
+previous_cases AS (
+    -- Get the total cases from exactly 2 years before the most recent date
+    SELECT location, total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT DATE_SUB(MAX(STR_TO_DATE(date, '%d/%m/%Y')), INTERVAL 2 YEAR) FROM mpoxcases
+    )
+),
+recent_deaths AS (
+    -- Get the most recent total deaths for each location
+    SELECT location, total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxdeaths
+    )
+),
+previous_deaths AS (
+    -- Get the total deaths from exactly 2 years before the most recent date
+    SELECT location, total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT DATE_SUB(MAX(STR_TO_DATE(date, '%d/%m/%Y')), INTERVAL 2 YEAR) FROM mpoxdeaths
+    )
+)
+-- Calculate the difference and percentage increases
+SELECT recent_cases.location,
+       recent_cases.total_cases AS recent_cases,
+       previous_cases.total_cases AS cases_two_years_ago,
+       (recent_cases.total_cases - previous_cases.total_cases) AS case_increase,
+       -- Calculate and round percentage increase for cases to 3 decimal places, bounded between 0 and 100%
+       CASE 
+           WHEN previous_cases.total_cases = 0 AND recent_cases.total_cases > 0 THEN '100.000%'
+           WHEN previous_cases.total_cases = 0 THEN '0.000%'
+           ELSE CONCAT(ROUND(((recent_cases.total_cases - previous_cases.total_cases) / previous_cases.total_cases) * 100, 3), '%')
+       END AS case_percentage_increase,
+       
+       recent_deaths.total_deaths AS recent_deaths,
+       previous_deaths.total_deaths AS deaths_two_years_ago,
+       (recent_deaths.total_deaths - previous_deaths.total_deaths) AS death_increase,
+       -- Calculate and round percentage increase for deaths to 3 decimal places, bounded between 0 and 100%
+       CASE 
+           WHEN previous_deaths.total_deaths = 0 AND recent_deaths.total_deaths > 0 THEN '100.000%'
+           WHEN previous_deaths.total_deaths = 0 THEN '0.000%'
+           ELSE CONCAT(ROUND(((recent_deaths.total_deaths - previous_deaths.total_deaths) / previous_deaths.total_deaths) * 100, 3), '%')
+       END AS death_percentage_increase
+FROM recent_cases
+JOIN previous_cases ON recent_cases.location = previous_cases.location
+JOIN recent_deaths ON recent_cases.location = recent_deaths.location
+JOIN previous_deaths ON recent_cases.location = previous_deaths.location
+ORDER BY case_percentage_increase DESC, death_percentage_increase DESC;
+
+
+-- Identifying the top 10 countries that had increased deaths over the year
+WITH recent_deaths AS (
+    -- Get the most recent total deaths for each location, excluding "World" and "North America"
+    SELECT location, total_deaths AS recent_total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE location NOT IN ('World', 'North America')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxdeaths
+    )
+),
+previous_deaths AS (
+    -- Get the total deaths from the start of 2023, excluding "World" and "North America"
+    SELECT location, total_deaths AS deaths_at_start_2023, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE location NOT IN ('World', 'North America')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = '2023-01-01'
+)
+-- Calculate the difference, and show deaths at start of 2023 and now
+SELECT recent_deaths.location,
+       previous_deaths.deaths_at_start_2023,
+       recent_deaths.recent_total_deaths,
+       (recent_deaths.recent_total_deaths - previous_deaths.deaths_at_start_2023) AS death_increase
+FROM recent_deaths
+JOIN previous_deaths ON recent_deaths.location = previous_deaths.location
+ORDER BY death_increase DESC
+LIMIT 10;
+
+-- Identifying the countries that had increased cases from 2023 to now
+WITH recent_cases AS (
+    -- Get the most recent total cases for each location, excluding "World" and "North America"
+    SELECT location, total_cases AS recent_total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE location NOT IN ('World', 'North America')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxcases
+    )
+),
+previous_cases AS (
+    -- Get the total cases from the start of 2023, excluding "World" and "North America"
+    SELECT location, total_cases AS cases_at_start_2023, STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE location NOT IN ('World', 'North America')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = '2023-01-01'
+)
+-- Calculate the difference, and show cases at start of 2023 and now
+SELECT recent_cases.location,
+       previous_cases.cases_at_start_2023,
+       recent_cases.recent_total_cases,
+       (recent_cases.recent_total_cases - previous_cases.cases_at_start_2023) AS case_increase
+FROM recent_cases
+JOIN previous_cases ON recent_cases.location = previous_cases.location
+ORDER BY case_increase DESC
+LIMIT 10;
+ 
+ -- Comparing between different regions
+WITH recent_cases AS (
+    -- Get the most recent total cases for each region
+    SELECT location, 
+           total_cases AS recent_total_cases, 
+           STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE location IN ('North America', 'South America', 'Asia', 'Europe')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxcases
+    )
+),
+recent_deaths AS (
+    -- Get the most recent total deaths for each region
+    SELECT location, 
+           total_deaths AS recent_total_deaths, 
+           STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE location IN ('North America', 'South America', 'Asia', 'Europe')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = (
+        SELECT MAX(STR_TO_DATE(date, '%d/%m/%Y')) FROM mpoxdeaths
+    )
+)
+-- Combine cases and deaths data for the regions, using LEFT JOIN to ensure all locations show up
+SELECT rc.location,
+       rc.recent_total_cases,
+       COALESCE(rd.recent_total_deaths, 0) AS recent_total_deaths -- Use 0 if no deaths are found
+FROM recent_cases rc
+LEFT JOIN recent_deaths rd ON rc.location = rd.location
+ORDER BY rc.location;
+
+-- Trial to find out why europe isnt showing up in above query
+SELECT DISTINCT location 
+FROM mpoxcases
+ORDER BY location;
+
+SELECT location, total_cases, STR_TO_DATE(date, '%d/%m/%Y') AS date
+FROM mpoxcases
+WHERE location = 'Europe'
+ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC
+LIMIT 1;
+
+SELECT location, total_deaths, STR_TO_DATE(date, '%d/%m/%Y') AS date
+FROM mpoxdeaths
+WHERE location = 'Europe'
+ORDER BY STR_TO_DATE(date, '%d/%m/%Y') DESC
+LIMIT 1;
+
+WITH recent_cases AS (
+    -- Get the most recent total cases for Europe on the specific date
+    SELECT location, 
+           total_cases AS recent_total_cases, 
+           STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxcases
+    WHERE location IN ('North America', 'South America', 'Asia', 'Europe')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = '2024-12-07'
+),
+recent_deaths AS (
+    -- Get the most recent total deaths for Europe on the specific date
+    SELECT location, 
+           total_deaths AS recent_total_deaths, 
+           STR_TO_DATE(date, '%d/%m/%Y') AS date
+    FROM mpoxdeaths
+    WHERE location IN ('North America', 'South America', 'Asia', 'Europe')
+    AND STR_TO_DATE(date, '%d/%m/%Y') = '2024-12-07'
+)
+-- Combine cases and deaths data for the regions
+SELECT rc.location,
+       rc.recent_total_cases,
+       COALESCE(rd.recent_total_deaths, 0) AS recent_total_deaths
+FROM recent_cases rc
+LEFT JOIN recent_deaths rd ON rc.location = rd.location
+ORDER BY rc.location;
+
+-- Sum of Total cases
+SELECT SUM(total_cases) AS total_cases_sum
+FROM mpoxcases;
+
+-- Sum of total cases per year
+SELECT YEAR(STR_TO_DATE(date, '%d/%m/%Y')) AS year, 
+       SUM(total_cases) AS total_cases_sum
+FROM mpoxcases
+WHERE STR_TO_DATE(date, '%d/%m/%Y') IS NOT NULL
+AND YEAR(STR_TO_DATE(date, '%d/%m/%Y')) IN (2022, 2023, 2024)
+GROUP BY YEAR(STR_TO_DATE(date, '%d/%m/%Y'))
+ORDER BY year;
+
+
+
