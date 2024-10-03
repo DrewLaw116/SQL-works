@@ -1,0 +1,85 @@
+(https://www.data.va.gov/api/views/ndt4-jm95/rows.csv?accessType=DOWNLOAD)
+
+SELECT*
+FROM veterans_va_health_care;
+
+-- get a list of the available states and their vet population
+SELECT distinct `State Name`, `Veteran Population`
+FROM veterans_va_health_care
+WHERE `Year` = 2015;
+
+-- Get the states with the 5 highest veteran populations
+SELECT distinct `State Name`, `Veteran Population`
+FROM veterans_va_health_care
+WHERE `Year` = 2015
+ORDER BY `Veteran Population` desc
+LIMIT 5;
+
+-- Find the state with the lowest VA health care patients 
+SELECT `State Name`, `Number of VA Health Care Patients`
+FROM veterans_va_health_care
+WHERE `Year` = 2015
+ORDER BY `Number of VA Health Care Patients` ASC
+LIMIT 1;
+
+-- Get the total number of VA health care patients per year
+SELECT `Year`, SUM(`Number of VA Health Care Patients`) AS total_patients
+FROM veterans_va_health_care
+GROUP BY `Year`;
+
+-- Calculate the average percentage of veterans using VA healthcare across all states
+SELECT AVG(`Percent of Veterans who used VA Health Care`) AS average_percentage
+FROM veterans_va_health_care;
+
+-- How has the percentage of veterans using VA health care changed over time?
+SELECT `Year`, AVG(`Percent of Veterans who used VA Health Care`) AS avg_percent_usage
+FROM veterans_va_health_care
+GROUP BY `Year`
+ORDER BY `Year`;
+
+-- Which states have seen the largest growth in VA health care usage between 2010 and 2015?
+SELECT `State Name`, 
+       (MAX(CASE WHEN `Year` = 2015 THEN `Percent of Veterans who used VA Health Care` END) -
+        MAX(CASE WHEN `Year` = 2010 THEN `Percent of Veterans who used VA Health Care` END)) AS percent_growth
+FROM veterans_va_health_care
+WHERE `Year` IN (2010, 2015)
+GROUP BY `State Name`
+ORDER BY percent_growth DESC;
+
+-- What is the overall percentage of veterans who used VA health care across all states for each year?
+SELECT `Year`, 
+       (SUM(`Number of VA Health Care Patients`) / SUM(`Veteran Population`)) * 100 AS overall_percent_usage
+FROM veterans_va_health_care
+GROUP BY `Year`
+ORDER BY `Year`;
+
+-- What is the average number of VA health care patients by state and year?
+SELECT `State Name`, `Year`, AVG(`Number of VA Health Care Patients`) AS avg_patients
+FROM veterans_va_health_care
+GROUP BY `State Name`, `Year`
+ORDER BY `State Name`, `Year`;
+
+-- Which states consistently have the highest veteran populations across all years?
+SELECT `State Name`, AVG(`Veteran Population`) AS avg_veteran_population
+FROM veterans_va_health_care
+GROUP BY `State Name`
+HAVING AVG(`Veteran Population`) > 1000000
+ORDER BY avg_veteran_population DESC;
+
+-- Which year had the highest average number of VA health care patients per state?
+SELECT `Year`, AVG(`Number of VA Health Care Patients`) AS avg_patients
+FROM veterans_va_health_care
+GROUP BY `Year`
+ORDER BY avg_patients DESC
+LIMIT 1;
+
+-- Compare Average Veteran Population for 2013 vs. 2014
+SELECT `State Name`, 
+       AVG(CASE WHEN `Year` = 2013 THEN `Veteran Population` END) AS population_2013,
+       AVG(CASE WHEN `Year` = 2014 THEN `Veteran Population` END) AS population_2014,
+       (AVG(CASE WHEN `Year` = 2014 THEN `Veteran Population` END) - 
+        AVG(CASE WHEN `Year` = 2013 THEN `Veteran Population` END)) AS population_change
+FROM veterans_va_health_care
+WHERE `Year` IN (2013, 2014)
+GROUP BY `State Name`
+ORDER BY population_change DESC;
